@@ -1,0 +1,25 @@
+{
+  "name": "@assistant.bd/workflow-engine",
+  "version": "1.0.0",
+  "description": "Workflow automation engine - Trigger + Condition + Action",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "lint": "eslint src/",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "redis": "^4.6.12",
+    "p-queue": "^7.4.1",
+    "joi": "^17.11.0",
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  }
+}

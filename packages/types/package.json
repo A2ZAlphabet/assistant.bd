@@ -1,0 +1,13 @@
+{
+  "name": "@assistant.bd/types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript type definitions",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "typescript": "^5.3.3"
+  }
+}

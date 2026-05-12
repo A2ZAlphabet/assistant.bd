@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: assistant_bd_postgres
+    environment:
+      POSTGRES_DB: assistant_bd
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secure_password_change_me
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - assistant_network
+
+  # Redis Cache & Message Queue
+  redis:
+    image: redis:7-alpine
+    container_name: assistant_bd_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - assistant_network
+
+  # API Gateway (NestJS)
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: assistant_bd_api
+    environment:
+      DATABASE_URL: postgresql://admin:secure_password_change_me@postgres:5432/assistant_bd
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - assistant_network
+    volumes:
+      - ./services/api-gateway:/app/services/api-gateway
+
+  # Workflow Engine
+  workflow-engine:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    container_name: assistant_bd_workflow
+    environment:
+      DATABASE_URL: postgresql://admin:secure_password_change_me@postgres:5432/assistant_bd
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - assistant_network
+    volumes:
+      - ./services/workflow-engine:/app/services/workflow-engine
+
+  # AI Orchestrator
+  ai-orchestrator:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    container_name: assistant_bd_ai
+    environment:
+      DATABASE_URL: postgresql://admin:secure_password_change_me@postgres:5432/assistant_bd
+      REDIS_URL: redis://redis:6379
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-dummy}
+      NODE_ENV: development
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - assistant_network
+    volumes:
+      - ./services/ai-orchestrator:/app/services/ai-orchestrator
+
+  # Next.js Web Dashboard
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: assistant_bd_web
+    environment:
+      NEXT_PUBLIC_API_URL: http://api-gateway:3001
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+    networks:
+      - assistant_network
+    volumes:
+      - ./apps/web:/app/apps/web
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  assistant_network:
+    driver: bridge

@@ -1,0 +1,19 @@
+{
+  "name": "@assistant.bd/ai-core",
+  "version": "1.0.0",
+  "description": "Core AI/LLM abstraction layer",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "openai": "^4.26.0",
+    "@anthropic-ai/sdk": "^0.20.0",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
