@@ -2,6 +2,10 @@
   "name": "assistant.bd",
   "version": "1.0.0",
   "description": "AI Operating System: No-code automation + AI agents + CRM",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/c7sqhzb45q-prog/assistant.bd.git"
+  },
   "private": true,
   "type": "module",
   "workspaces": [
@@ -12,19 +16,25 @@
     "workflows"
   ],
   "scripts": {
-    "dev": "turbo run dev --parallel",
-    "build": "turbo run build",
-    "start": "turbo run start",
-    "test": "turbo run test",
-    "lint": "turbo run lint",
+    "dev": "node ./scripts/run-workspaces.mjs dev --parallel",
+    "build": "node ./scripts/run-workspaces.mjs build",
+    "start": "node ./scripts/run-workspaces.mjs start --parallel",
+    "test": "node ./scripts/run-workspaces.mjs test",
+    "lint": "node ./scripts/run-workspaces.mjs lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "type-check": "turbo run type-check",
-    "clean": "turbo run clean && rm -rf node_modules",
-    "install:all": "pnpm install",
-    "deploy": "turbo run build && ./scripts/deploy.sh"
+    "type-check": "node ./scripts/run-workspaces.mjs type-check",
+    "clean": "node ./scripts/clean.mjs",
+    "install:all": "npm install",
+    "deploy": "npm run build && ./scripts/deploy.sh"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@nestjs/platform-express": "^10.2.10",
+    "inherits": "^2.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "string-width": "^8.2.1"
+  },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "eslint": "^8.55.0",
@@ -33,8 +43,6 @@
     "typescript": "^5.3.3"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
-  },
-  "packageManager": "pnpm@8.15.0"
+    "node": ">=18.0.0"
+  }
 }
