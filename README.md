@@ -1,5 +1,7 @@
 # 🧠 assistant.bd — AI Operating System
 
+[![CI](https://github.com/c7sqhzb45q-prog/assistant.bd/actions/workflows/ci.yml/badge.svg)](https://github.com/c7sqhzb45q-prog/assistant.bd/actions/workflows/ci.yml)
+
 **A production-grade no-code automation platform** combining:
 - **Zapier/Make.com** — Workflow automation
 - **Tasklet.ai** — AI agent orchestration  
@@ -73,6 +75,15 @@ npm run build
 # Deploy to production
 npm run deploy
 ```
+
+---
+
+## 🔌 API Docs
+
+- Health check: `http://localhost:3001/health`
+- Swagger UI: `http://localhost:3001/docs`
+- OpenAPI JSON: `http://localhost:3001/docs-json`
+- Lovable integration guide: `docs/LOVABLE_API.md`
 
 ---
 
@@ -152,23 +163,23 @@ Action Executor (reply/email/call/automation)
 
 This monorepo uses:
 - **Turborepo** for build optimization
-- **pnpm** for package management
+- **npm workspaces** for package management (pnpm optional)
 - **ESLint + Prettier** for code quality
 
 ```bash
 # Development workflow
-pnpm install
-pnpm run dev
+npm install
+npm run dev
 
 # Run specific service
-pnpm --filter=@assistant.bd/api-gateway dev
+npm run -w @assistant.bd/api-gateway dev
 
 # Run all tests
-pnpm run test
+npm run test
 
 # Lint & format
-pnpm run lint
-pnpm run format
+npm run lint
+npm run format
 ```
 
 ---
