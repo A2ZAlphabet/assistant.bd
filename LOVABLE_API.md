@@ -1,6 +1,6 @@
 # Lovable ↔ assistant.bd (API integration)
 
-This repo includes a minimal API Gateway you can connect to a Lovable app.
+This repo includes a minimal API Gateway you can connect to a Lovable app. Includes Supabase for database, authentication, and user management.
 
 ## 1) Run the API Gateway locally
 
@@ -14,12 +14,22 @@ Default URL: `http://localhost:3001`
 
 Health check: `GET /health`
 
-Billing:
+### Core Endpoints
 
-- `GET /billing/plans` - list configured subscription plans.
-- `POST /billing/checkout` - create a Stripe Checkout Session.
-- `POST /billing/portal` - create a Stripe Customer Portal Session.
-- `POST /billing/webhook` - Stripe webhook receiver for subscription events.
+**Public (no auth required):**
+- `GET /health` - Health check
+- `GET /billing/plans` - List subscription plans
+
+**Protected (API key required):**
+- `GET /workflows` - List user's workflows
+- `POST /workflows` - Create new workflow
+- `GET /api-keys` - List user's API keys
+- `POST /api-keys/generate` - Generate new API key
+
+**Billing:**
+- `POST /billing/checkout` - Create Stripe Checkout Session
+- `POST /billing/portal` - Create Stripe Customer Portal Session
+- `POST /billing/webhook` - Stripe webhook receiver for subscription events
 
 ## 2) Get an OpenAPI spec (Swagger)
 
@@ -52,17 +62,57 @@ CORS_ORIGIN=https://your-app.lovable.app
 CORS_ORIGIN=http://localhost:3000,https://your-app.lovable.app
 ```
 
-## 5) In Lovable: integrate the API
+## 5) Set Up Supabase Database
 
-In your Lovable project chat, paste something like:
+**Important:** Database is required for authentication and user management.
 
-> Integrate my API.  
-> Base URL: `https://YOUR_PUBLIC_API_DOMAIN`  
-> OpenAPI spec: `https://YOUR_PUBLIC_API_DOMAIN/docs-json`  
-> No auth for now.  
-> Create a simple "Health" check that calls `GET /health` and displays the response.
+See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for:
+- Creating Supabase project
+- Database schema setup
+- API key management
+- User authentication
+- Billing integration
 
-If/when you add API keys or tokens to this API, route calls through Lovable Cloud + an Edge Function and store secrets in `Cloud → Secrets` (so keys are not exposed in the browser).
+## 6) In Lovable: integrate the API
+
+### Option A: Without Authentication (Quick Testing)
+
+In your Lovable project chat, paste:
+
+```
+Integrate my API.
+Base URL: https://YOUR_PUBLIC_API_DOMAIN
+OpenAPI spec: https://YOUR_PUBLIC_API_DOMAIN/docs-json
+No auth for now.
+Create a simple "Health" check component that calls GET /health and displays the response.
+```
+
+### Option B: With API Key Authentication (Production)
+
+First, generate an API key via the `/api-keys/generate` endpoint (requires authentication).
+
+Then in Lovable:
+
+```
+Integrate my API with API key authentication.
+Base URL: https://YOUR_PUBLIC_API_DOMAIN
+OpenAPI spec: https://YOUR_PUBLIC_API_DOMAIN/docs-json
+
+Authentication:
+- Type: Bearer Token
+- Store API key in Cloud → Secrets as MY_API_KEY
+- Include header: Authorization: Bearer ${MY_API_KEY}
+
+Protected endpoints:
+- GET /workflows - List user's workflows
+- POST /workflows - Create new workflow
+- GET /api-keys - List user's API keys
+
+Create components:
+1. "Workflows List" - calls GET /workflows, displays all workflows
+2. "Create Workflow" - form to POST /workflows with name and config
+3. "API Key Manager" - displays current API keys
+```
 
 ---
 
@@ -74,12 +124,12 @@ Check that your monorepo has the `@assistant.bd/api-gateway` workspace:
 
 ```bash
 ls -la packages/
-# Should include: api-gateway, web, etc.
+# Should include: api-gateway, web, supabase-client, etc.
 ```
 
 ### Step 2: Environment Setup
 
-Create `.env` files for local development:
+Create `.env.local` files for local development:
 
 **`.env.local` (in api-gateway root)**
 ```env
@@ -87,13 +137,24 @@ PORT=3001
 NODE_ENV=development
 CORS_ORIGIN=http://localhost:3000,http://localhost:5173
 
-# Stripe (if using billing)
+# Supabase (required for auth)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=eyJhbGc...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+
+# Stripe (for billing)
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
-### Step 3: Run Locally
+### Step 3: Install Supabase Client
+
+```bash
+npm install --save -w @assistant.bd/api-gateway @supabase/supabase-js
+```
+
+### Step 4: Run Locally
 
 ```bash
 # Install dependencies
@@ -111,7 +172,45 @@ You should see a response like:
 {"status": "ok", "timestamp": "2026-06-02T..."}
 ```
 
-### Step 4: Expose Publicly (for testing)
+### Step 5: Create Your First API Key
+
+Use Supabase dashboard or directly:
+
+```bash
+# Generate API key for your user
+curl -X POST http://localhost:3001/api-keys/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "user-uuid-here",
+    "name": "Lovable Integration"
+  }'
+
+# Response:
+# { "id": "key-id", "key": "sk_xxxxxxxxxxxxx" }
+```
+
+Save the `key` value — you'll use this in Lovable.
+
+### Step 6: Test Protected Endpoints
+
+```bash
+API_KEY="sk_xxxxxxxxxxxxx"
+
+# List workflows (empty at first)
+curl http://localhost:3001/workflows \
+  -H "Authorization: Bearer $API_KEY"
+
+# Create a workflow
+curl -X POST http://localhost:3001/workflows \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My First Workflow",
+    "config": { "trigger": "manual", "actions": [] }
+  }'
+```
+
+### Step 7: Expose Publicly (for testing)
 
 **Using ngrok** (quick testing):
 ```bash
@@ -126,65 +225,96 @@ This gives you a URL like: `https://abcd-12-34-56-78.ngrok.io`
 - Set environment variables in the deployment dashboard
 - Get your public HTTPS URL
 
-### Step 5: Test the Endpoints
+### Step 8: Test All Endpoints
 
-Before integrating with Lovable, verify all endpoints work:
+Before integrating with Lovable, verify:
 
 ```bash
-# Health check
+# Health check (public)
 curl https://YOUR_PUBLIC_URL/health
 
-# List billing plans
+# List billing plans (public)
 curl https://YOUR_PUBLIC_URL/billing/plans
+
+# Get workflows (protected)
+curl https://YOUR_PUBLIC_URL/workflows \
+  -H "Authorization: Bearer $YOUR_API_KEY"
 
 # View API docs
 # Open in browser: https://YOUR_PUBLIC_URL/docs
 ```
 
-### Step 6: Integrate with Lovable
+### Step 9: Integrate with Lovable
 
 1. Log in to your **Lovable** project
 2. Open the chat or builder
-3. Paste the integration prompt:
-
-```
-Integrate my API.
-Base URL: https://YOUR_PUBLIC_URL
-OpenAPI spec: https://YOUR_PUBLIC_URL/docs-json
-No auth for now.
-Create a simple Health Check component that calls GET /health and displays the response.
-```
-
+3. Paste one of the integration prompts from **Section 6** above
 4. Lovable will:
    - Fetch your OpenAPI spec
    - Parse available endpoints
    - Generate API integration code
    - Create UI components to call your API
 
-### Step 7: Add Authentication (Next Steps)
+### Step 10: Add More Features in Lovable
 
-Once basic integration works, add API key authentication:
+Once basic integration works, ask Lovable to add:
 
-1. **Generate API keys** in your database or environment
-2. **Pass keys via Lovable Cloud Secrets** (not in browser code)
-3. **Use Edge Functions** to append auth headers before sending requests
+```
+Add to my app:
+1. Workflow creation form with:
+   - Name input
+   - Description textarea
+   - Config JSON editor
+   - Create button (POST /workflows)
+   
+2. Workflows list view with:
+   - Display all workflows from GET /workflows
+   - Show name, description, status
+   - Delete button (DELETE /workflows/:id)
+   - Edit button (opens form)
 
-Example Lovable Edge Function:
-```javascript
-export default async function handler(request) {
-  const apiKey = Deno.env.get("API_KEY");
-  
-  const response = await fetch(request.url, {
-    method: request.method,
-    headers: {
-      ...request.headers,
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: request.body
-  });
-  
-  return response;
-}
+3. User dashboard with:
+   - Current subscription plan
+   - API key display with copy button
+   - Usage statistics
+```
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────┐
+│   Lovable App       │
+│  (React/TypeScript) │
+└──────────┬──────────┘
+           │
+           │ HTTPS + API Key
+           │
+┌──────────▼──────────────────────────────┐
+│  API Gateway (Node.js/Express)          │
+│  - /workflows                           │
+│  - /api-keys                            │
+│  - /billing                             │
+│  - /health                              │
+└──────────┬──────────────────────────────┘
+           │
+           │ Authenticated Queries
+           │
+┌──────────▼──────────────────────────────┐
+│  Supabase PostgreSQL Database           │
+│  - users                                │
+│  - api_keys                             │
+│  - workflows                            │
+│  - subscriptions                        │
+│  - audit_logs                           │
+└─────────────────────────────────────────┘
+           │
+           │ Webhooks
+           │
+┌──────────▼──────────────────────────────┐
+│  Stripe (Billing & Payments)            │
+└─────────────────────────────────────────┘
 ```
 
 ---
@@ -195,9 +325,14 @@ export default async function handler(request) {
 - Ensure `CORS_ORIGIN` matches your Lovable published URL exactly
 - Check for trailing slashes and protocol (http vs https)
 
+### 401 Unauthorized on Protected Routes
+- Verify API key is valid: `curl /api-keys with Authorization header`
+- Check that Supabase `api_keys` table has the key
+- Ensure key is active (`is_active = true`)
+
 ### 404 on `/docs-json`
 - Verify API Gateway is using OpenAPI/Swagger middleware
-- Check that docs generation is enabled in your server config
+- Check that docs generation is enabled in server config
 
 ### Lovable Can't Reach API
 - Test with: `curl -I https://YOUR_PUBLIC_URL/health`
@@ -208,3 +343,28 @@ export default async function handler(request) {
 - Verify Stripe API keys are set in environment
 - Check webhook secret is configured
 - Review Stripe dashboard for failed events
+
+### Database Connection Errors
+- Verify `SUPABASE_URL` is correct (from Supabase dashboard Settings → API)
+- Check `SUPABASE_SERVICE_ROLE_KEY` is the server key, not anon key
+- Ensure database tables were created (run SQL script from SUPABASE_SETUP.md)
+
+---
+
+## Next Steps
+
+1. ✅ Create Supabase project (see SUPABASE_SETUP.md)
+2. ✅ Run API Gateway locally
+3. ✅ Generate API key
+4. ✅ Test endpoints with curl
+5. ✅ Deploy API to public HTTPS URL
+6. ✅ Integrate with Lovable
+7. ✅ Add UI components in Lovable
+8. ✅ Monitor usage in audit logs
+
+## Additional Resources
+
+- [Supabase Documentation](https://supabase.com/docs)
+- [Stripe API Reference](https://stripe.com/docs/api)
+- [Lovable Documentation](https://lovable.dev/docs)
+- [OpenAPI/Swagger Spec](https://swagger.io/specification/)
