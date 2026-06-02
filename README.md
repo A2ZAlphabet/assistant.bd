@@ -161,6 +161,8 @@ Action Executor (reply/email/call/automation)
 
 ## 🤝 Contributing
 
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
 This monorepo uses:
 - **Turborepo** for build optimization
 - **npm workspaces** for package management (pnpm optional)
@@ -247,7 +249,7 @@ See `/docs` for:
 
 ## ⚖️ License
 
-Proprietary — All rights reserved © 2024-2025 assistant.bd
+This project is licensed under the MIT License - see [LICENSE](./LICENSE) file for details.
 
 ---
 
